@@ -8,3 +8,4 @@
 /.dev/
 /native/target/
 /shim/claude-native/*.node
+/tools/node_modules/

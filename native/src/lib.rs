@@ -48,7 +48,12 @@ fn fail(c: &str, msg: &str) -> Error {
     Error::new(Status::GenericFailure, format!("{c}: {msg}"))
 }
 
+const MAX_SEGS: usize = 1024;
+
 fn check(segs: &[String]) -> Result<()> {
+    if segs.len() > MAX_SEGS {
+        return Err(fail("ENAMETOOLONG", "path too deep"));
+    }
     for s in segs {
         if s.is_empty() || s == "." || s == ".." || s.contains('/') || s.contains('\0') {
             return Err(fail("EXDEV", &format!("segment escapes root: {s:?}")));
@@ -57,8 +62,11 @@ fn check(segs: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn borrow(fd: i32) -> BorrowedFd<'static> {
-    unsafe { BorrowedFd::borrow_raw(fd) }
+fn borrow(fd: i32) -> Result<BorrowedFd<'static>> {
+    if fd < 0 {
+        return Err(fail("EBADF", &format!("bad file descriptor {fd}")));
+    }
+    Ok(unsafe { BorrowedFd::borrow_raw(fd) })
 }
 
 fn open_dir(dir: i32, segs: &[String], flags: OFlags) -> Result<Option<OwnedFd>> {
@@ -66,7 +74,7 @@ fn open_dir(dir: i32, segs: &[String], flags: OFlags) -> Result<Option<OwnedFd>>
         return Ok(None);
     }
     let p = segs.join("/");
-    openat2(borrow(dir), p.as_str(), flags | OFlags::DIRECTORY | OFlags::CLOEXEC, Mode::empty(), RESOLVE)
+    openat2(borrow(dir)?, p.as_str(), flags | OFlags::DIRECTORY | OFlags::CLOEXEC, Mode::empty(), RESOLVE)
         .map(Some)
         .map_err(|e| os(e, &p))
 }
@@ -75,7 +83,10 @@ fn with_parent<T>(dir: i32, segs: &[String], f: impl FnOnce(BorrowedFd, &str) ->
     check(segs)?;
     let (leaf, parents) = segs.split_last().ok_or_else(|| fail("EINVAL", "empty path beneath root"))?;
     let owned = open_dir(dir, parents, OFlags::PATH)?;
-    let fd = owned.as_ref().map(|o| o.as_fd()).unwrap_or_else(|| borrow(dir));
+    let fd = match &owned {
+        Some(o) => o.as_fd(),
+        None => borrow(dir)?,
+    };
     f(fd, leaf)
 }
 
@@ -85,7 +96,7 @@ fn stx(fd: BorrowedFd, name: &str, flags: AtFlags) -> Result<Statx> {
 
 fn leaf_stat(dir: i32, segs: &[String]) -> Result<Statx> {
     if segs.is_empty() {
-        return stx(borrow(dir), "", AtFlags::EMPTY_PATH);
+        return stx(borrow(dir)?, "", AtFlags::EMPTY_PATH);
     }
     with_parent(dir, segs, |p, leaf| stx(p, leaf, AtFlags::SYMLINK_NOFOLLOW))
 }
@@ -193,7 +204,7 @@ pub async fn open_beneath(dir_fd: i32, segs: Vec<String>, flags: i32, mode: u32)
         check(&segs)?;
         let fl = OFlags::from_bits_retain(flags as u32) | OFlags::NOFOLLOW | OFlags::CLOEXEC;
         let p = if segs.is_empty() { ".".to_string() } else { segs.join("/") };
-        openat2(borrow(dir_fd), p.as_str(), fl, Mode::from_bits_truncate(mode), RESOLVE)
+        openat2(borrow(dir_fd)?, p.as_str(), fl, Mode::from_bits_truncate(mode), RESOLVE)
             .map(|f| f.into_raw_fd())
             .map_err(|e| os(e, &p))
     })
@@ -205,7 +216,7 @@ pub async fn stat_handle_beneath(dir_fd: i32, segs: Vec<String>) -> Result<StatH
     blocking(move || {
         check(&segs)?;
         let p = if segs.is_empty() { ".".to_string() } else { segs.join("/") };
-        let fd = openat2(borrow(dir_fd), p.as_str(), OFlags::PATH | OFlags::NOFOLLOW | OFlags::CLOEXEC, Mode::empty(), RESOLVE)
+        let fd = openat2(borrow(dir_fd)?, p.as_str(), OFlags::PATH | OFlags::NOFOLLOW | OFlags::CLOEXEC, Mode::empty(), RESOLVE)
             .map_err(|e| os(e, &p))?;
         let s = stx(fd.as_fd(), "", AtFlags::EMPTY_PATH)?;
         Ok(StatHandle { is_symbolic_link: mode_type(s.stx_mode) == FileType::Symlink, fd: fd.into_raw_fd() })
@@ -216,7 +227,7 @@ pub async fn stat_handle_beneath(dir_fd: i32, segs: Vec<String>) -> Result<StatH
 #[napi]
 pub async fn verify_leaf_beneath(dir_fd: i32, segs: Vec<String>, fd: i32) -> Result<()> {
     blocking(move || {
-        let h = stx(borrow(fd), "", AtFlags::EMPTY_PATH)?;
+        let h = stx(borrow(fd)?, "", AtFlags::EMPTY_PATH)?;
         if mode_type(h.stx_mode) != FileType::RegularFile || h.stx_nlink == 0 {
             return Ok(());
         }
@@ -277,7 +288,7 @@ pub async fn readdir_beneath(dir_fd: i32, segs: Vec<String>, max: Option<u32>) -
         let owned = open_dir(dir_fd, &segs, OFlags::RDONLY)?;
         let fd = match &owned {
             Some(o) => o.as_fd(),
-            None => borrow(dir_fd),
+            None => borrow(dir_fd)?,
         };
         let mut dir = Dir::read_from(fd).map_err(|e| os(e, "readdir"))?;
         let mut entries = Vec::new();

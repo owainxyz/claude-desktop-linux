@@ -3,7 +3,7 @@ set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 feed=https://downloads.claude.ai/releases/win32/x64
-asar="npx -y @electron/asar@3.2.17"
+asar="$here/tools/node_modules/.bin/asar"
 ptyVer=1.2.0-beta.14
 ptyIntegrity=sha512-XORU9BQgpxVgqr7WivjJ17mLenOHUgKKWzuZZNaw3NDYgHc/wPJQMSaoLDrpEgqV6aU1nNwil1o/OqYj6lWmUA==
 signer='CN=Anthropic\\, PBC,O=Anthropic\\, PBC,L=San Francisco,ST=California,C=US,serialNumber=4860621'
@@ -12,6 +12,7 @@ die() { echo "error: $*" >&2; exit 1; }
 
 cd "$here"
 mkdir -p dl vendor .dev
+(cd tools && npm ci --ignore-scripts --no-audit --no-fund --silent)
 
 releases=$(curl -fsSL --proto '=https' --tlsv1.2 "$feed/RELEASES" | tr -d '\r\357\273\277')
 if [ -n "${CLAUDE_VERSION:-}" ]; then
@@ -35,7 +36,7 @@ mkdir -p "x/$ver" "build/$ver"
 exe="x/$ver/lib/net45/claude.exe"
 res="x/$ver/lib/net45/resources"
 
-osslsigncode=$(nix build --no-link --print-out-paths nixpkgs#osslsigncode | tail -1)/bin/osslsigncode
+osslsigncode=$(nix build --no-link --print-out-paths "$here#osslsigncode" | tail -1)/bin/osslsigncode
 ca=${SSL_CERT_FILE:-/etc/ssl/certs/ca-certificates.crt}
 "$osslsigncode" verify -in "$exe" -CAfile "$ca" -TSA-CAfile "$ca" > ".dev/sig-$ver.txt" 2>&1 || die "claude.exe signature does not verify (.dev/sig-$ver.txt)"
 awk '/^Signer.s certificate:/{getline; getline; getline; print; exit}' ".dev/sig-$ver.txt" | grep -qF "Subject: ${signer//\\\\/\\}" || die "claude.exe is not signed by Anthropic, PBC"
@@ -53,6 +54,7 @@ done < "x/$ver/drop.txt"
 
 (cd native && nice -n 19 cargo build --release --locked -j 6 --quiet)
 cp native/target/release/libclaude_native_linux.so shim/claude-native/claude-native-binding.node
+node test/native.mjs shim/claude-native | tail -1
 rm -rf "$app/node_modules/@ant/claude-native"
 cp -r shim/claude-native "$app/node_modules/@ant/claude-native"
 

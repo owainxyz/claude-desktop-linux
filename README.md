@@ -27,7 +27,7 @@ tested on nixos (x86_64, wayland, nvidia) against 6.6395.1.
 ## requirements
 
 - linux x86_64
-- [nix](https://nixos.org/download) for electron 45, gcc runtime libs and osslsigncode. works on any distro with nix installed, not just nixos
+- [nix](https://nixos.org/download) with flakes enabled, for electron 45, gcc runtime libs and osslsigncode. versions come from `flake.lock`. works on any distro with nix installed, not just nixos
 - rust (cargo)
 - node 22+ with npx
 - `7z`, `curl`, `xxd`, imagemagick (`magick`, `identify`)
@@ -65,7 +65,7 @@ git pull
 ./install.sh
 ```
 
-`build.sh` always takes the newest release in the feed. `CLAUDE_VERSION=6.6395.1 ./build.sh` pins one, as long as it's still in the feed. close the app before `install.sh`.
+`build.sh` always takes the newest release in the feed. electron and the other nix tools stay on the revision in `flake.lock`, run `nix flake update` to move them forward (worth doing for electron security fixes). `CLAUDE_VERSION=6.6395.1 ./build.sh` pins one, as long as it's still in the feed. close the app before `install.sh`.
 
 ## uninstall
 
@@ -138,6 +138,9 @@ see [SECURITY.md](SECURITY.md) for reporting.
 - `claude.exe` has a valid authenticode signature that chains to a trusted root, and the signer is exactly `Anthropic, PBC` (delaware 4860621). checked with osslsigncode against your system ca bundle, including the timestamp
 - both asar headers match the hashes embedded in that signed exe, and every file inside matches its header hash, block by block. one flipped byte anywhere stops the build
 - node-pty's tarball matches a pinned sha512, and the rust crate builds with `--locked`
+- nix tools come from a pinned nixpkgs revision (`flake.lock`), not whatever your registry points at
+- the asar and fuse tools are installed from `tools/package-lock.json` with `npm ci --ignore-scripts`, so no install scripts run and every package is hash checked
+- the native module has to pass `test/native.mjs` (24 escape and race tests) before it's packed
 - the feed's version string is checked against a strict pattern before it's used in any path
 
 if any check fails, `build.sh` stops and nothing is installed.
@@ -158,7 +161,9 @@ the installed binary gets the same electron fuses as the official windows build:
 | OnlyLoadAppFromAsar | on |
 | EnableCookieEncryption | on, cookies are encrypted with your keyring (gnome keyring, kwallet, or chromium's fallback) |
 
-the chromium sandbox stays on. electron's asar integrity check only exists for mac and windows, so on linux the app files are protected by normal file permissions under your prefix.
+the launcher also clears `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, `ELECTRON_EXTRA_LAUNCH_ARGS` and the electron debug variables before starting, and the install dir is read-only (`r-x`), so nothing running as you can quietly patch the app files without changing permissions first.
+
+the chromium sandbox stays on: renderers and the gpu process run under seccomp-bpf in their own user namespace. electron's asar integrity check only exists for mac and windows, so on linux the app files are protected by normal file permissions under your prefix.
 
 **what it doesn't protect against**
 
@@ -188,12 +193,17 @@ the chromium sandbox stays on. electron's asar integrity check only exists for m
 ./build.sh                 full verified build into build/<ver>
 ./dev.sh <name> <seconds>  repack the current build, run it on a hidden xvfb display, save .dev/<name>.png and .log
 ./run.sh                   run build/current against nix electron without installing
+node test/native.mjs       escape tests for the native module
+nix develop                shell with every build dependency
 ```
 
 layout:
 
 ```
 build.sh             download, verify, patch, pack
+flake.nix, .lock     pinned nix tools
+tools/               locked asar + fuses cli
+test/native.mjs      native module escape tests
 verify.mjs           asar integrity checker
 install.sh           runtime, fuses, launcher, desktop entry
 native/              rust @ant/claude-native for linux
