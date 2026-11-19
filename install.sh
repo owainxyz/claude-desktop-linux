@@ -40,7 +40,13 @@ export LD_LIBRARY_PATH=$stdcpp/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}
 export CHROME_DEVEL_SANDBOX=$el/libexec/electron/chrome-sandbox
 export ELECTRON_IS_DEV=0
 export FONTCONFIG_FILE=$lib/fonts.conf
-exec "$lib/claude-desktop" --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations,UseOzonePlatform --enable-wayland-ime --force-prefers-no-reduced-motion --enable-smooth-scrolling "\$@"
+store=--password-store=basic
+export CLAUDE_PLAINTEXT_STORE=1
+if command -v busctl >/dev/null && busctl --user list 2>/dev/null | grep -q '^org\.freedesktop\.secrets '; then
+  store=--password-store=gnome-libsecret
+  unset CLAUDE_PLAINTEXT_STORE
+fi
+exec "$lib/claude-desktop" "\$store" --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations,UseOzonePlatform --enable-wayland-ime --force-prefers-no-reduced-motion --enable-smooth-scrolling "\$@"
 SH
 chmod 755 "$dest/bin/claude-desktop"
 
