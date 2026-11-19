@@ -1,0 +1,10 @@
+/dl/
+/x/
+/x6/
+/build/
+/src/
+/re/
+/vendor/
+/.dev/
+/native/target/
+/shim/claude-native/*.node
