@@ -1,13 +1,19 @@
-# security
+# Security policy
 
-report problems privately through github's **report a vulnerability** button on this repo (security tab), not in a public issue.
+## Reporting a vulnerability
 
-in scope:
+Please report security issues privately through GitHub's **Report a vulnerability** button on this repository's Security tab, not in a public issue.
 
-- anything that lets a file operation escape its root through `native/` (symlinks, `..`, races, hard links)
-- a way to get `build.sh` to accept a file that isn't anthropic's signed release
-- the launcher or installer doing something unsafe with paths or permissions
+## Scope
 
-out of scope: bugs in the claude app itself. report those to anthropic at https://www.anthropic.com/responsible-disclosure-policy
+In scope:
 
-only the latest commit on `main` is supported.
+- Anything that lets a file operation escape its root through `native/` (symlinks, `..`, races, hard links)
+- A way to make `build.sh` accept a file that is not Anthropic's signed release
+- The launcher or installer doing something unsafe with paths or permissions
+
+Out of scope: bugs in the Claude app itself. Report those to Anthropic through their [responsible disclosure policy](https://www.anthropic.com/responsible-disclosure-policy).
+
+## Supported versions
+
+Only the latest commit on `main` is supported.

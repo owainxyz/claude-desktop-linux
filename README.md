@@ -1,224 +1,224 @@
 # claude-desktop-linux
 
-the official windows claude desktop app, checked and rebuilt to run natively on linux.
+The official Windows Claude Desktop app, verified and rebuilt to run natively on Linux.
 
-nothing from anthropic is in this repo. `build.sh` downloads the current windows release from anthropic's own update feed, proves it's genuine, swaps out the windows-only parts and packs it for linux. every build is made on your machine from anthropic's signed files.
+Nothing from Anthropic is in this repository. `build.sh` downloads the current Windows release from Anthropic's own update feed, proves it is genuine, replaces the Windows-only parts and packages it for Linux. Every build is made on your machine from Anthropic's signed files.
 
-not affiliated with or endorsed by anthropic. see [legal](#legal).
+Not affiliated with or endorsed by Anthropic. See [Legal](#legal).
 
-## status
+## Status
 
-| | |
-|---|---|
-| sign in (google) | works, opens your browser and comes back via `claude://` |
-| wayland, x11 | works (`--ozone-platform-hint=auto`) |
-| chat, projects, artifacts | should work, it's the same web frontend as windows |
-| claude code tab | untested, the app downloads its own linux `claude` binary for it |
-| terminal (node-pty) | untested |
-| mcp servers from `claude_desktop_config.json` | untested |
-| tray, notifications | untested, the app has linux code for both |
-| office add-in, windows computer use | no, needs windows |
-| bundled m365 and github mcp helpers | no, windows `.exe`/`.dll` only |
-| ssh remote | no, helpers are windows binaries |
-| auto update | no, rerun `build.sh` |
+| Feature | Status |
+| --- | --- |
+| Sign in (Google) | Works. Opens your browser and returns through `claude://` |
+| Wayland, X11 | Works (`--ozone-platform-hint=auto`) |
+| Chat, projects, artifacts | Expected to work; it is the same web frontend as on Windows |
+| Claude Code tab | Untested. The app downloads its own Linux `claude` binary for it |
+| Terminal (node-pty) | Untested |
+| MCP servers from `claude_desktop_config.json` | Untested |
+| Tray, notifications | Untested. The app has Linux code for both |
+| Office add-in, Windows computer use | Not supported, requires Windows |
+| Bundled Microsoft 365 and GitHub MCP helpers | Not supported, Windows `.exe`/`.dll` only |
+| SSH remote | Not supported, the helpers are Windows binaries |
+| Automatic updates | Not supported. Rerun `build.sh` |
 
-tested on nixos (x86_64, wayland, nvidia) against 6.6395.1.
+Tested on NixOS (x86_64, Wayland, NVIDIA) against version 6.6395.1.
 
-## requirements
+## Requirements
 
-- linux x86_64
-- [nix](https://nixos.org/download) with flakes enabled, for electron 45, gcc runtime libs and osslsigncode. versions come from `flake.lock`. works on any distro with nix installed, not just nixos
-- rust (cargo)
-- node 22+ with npx
-- `7z`, `curl`, `xxd`, imagemagick (`magick`, `identify`)
+- Linux on x86_64
+- [Nix](https://nixos.org/download) with flakes enabled, which provides Electron 45, the GCC runtime libraries and osslsigncode at the versions pinned in `flake.lock`. Any distribution with Nix installed works, not only NixOS
+- Rust (Cargo)
+- Node.js 22 or later, with `npx`
+- `7z`, `curl`, `xxd` and ImageMagick (`magick`, `identify`)
 
-## install
+## Installation
 
-```
+```sh
 git clone https://github.com/owainxyz/claude-desktop-linux
 cd claude-desktop-linux
 ./build.sh
 ./install.sh
 ```
 
-then run `claude-desktop`, or pick **Claude Desktop** from your launcher (rofi, fuzzel, anything that reads `.desktop` files).
+Then run `claude-desktop`, or choose **Claude Desktop** from your launcher (rofi, fuzzel or anything that reads `.desktop` files).
 
-`install.sh` puts:
+`install.sh` installs:
 
-| path | what |
-|---|---|
-| `~/.local/bin/claude-desktop` | launcher |
-| `~/.local/lib/claude-desktop/` | electron runtime + app |
-| `~/.local/lib/claude-desktop-roots/` | nix gc roots so the runtime isn't garbage collected |
-| `~/.local/share/applications/com.anthropic.Claude.desktop` | launcher entry + `claude://` handler |
-| `~/.local/share/icons/hicolor/96x96/apps/claude-desktop.png` | icon, pulled from `claude.exe` |
+| Path | Contents |
+| --- | --- |
+| `~/.local/bin/claude-desktop` | Launcher |
+| `~/.local/lib/claude-desktop/` | Electron runtime and app |
+| `~/.local/lib/claude-desktop-roots/` | Nix GC roots, so the runtime is not garbage collected |
+| `~/.local/share/applications/com.anthropic.Claude.desktop` | Desktop entry and `claude://` handler |
+| `~/.local/share/icons/hicolor/96x96/apps/claude-desktop.png` | Icon, extracted from `claude.exe` |
 
-`PREFIX=/opt/claude ./install.sh` installs somewhere else. it has to be an absolute path with no spaces.
+To install elsewhere, use `PREFIX=/opt/claude ./install.sh`. The prefix must be an absolute path without spaces.
 
-app data lives in `~/.config/Claude`, same as the official apps.
+App data is stored in `~/.config/Claude`, the same as the official apps.
 
-## update
+## Updating
 
-```
+```sh
 git pull
 ./build.sh
 ./install.sh
 ```
 
-`build.sh` always takes the newest release in the feed. electron and the other nix tools stay on the revision in `flake.lock`, run `nix flake update` to move them forward (worth doing for electron security fixes). `CLAUDE_VERSION=6.6395.1 ./build.sh` pins one, as long as it's still in the feed. close the app before `install.sh`.
+`build.sh` always uses the newest release in the feed. Electron and the other Nix tools stay on the revision in `flake.lock`; run `nix flake update` to move them forward, which is worth doing for Electron security fixes. `CLAUDE_VERSION=6.6395.1 ./build.sh` pins a specific version, as long as it is still in the feed. Close the app before running `install.sh`.
 
-## uninstall
+## Uninstalling
 
-```
+```sh
 rm -rf ~/.local/lib/claude-desktop ~/.local/lib/claude-desktop-roots ~/.local/bin/claude-desktop \
   ~/.local/share/applications/com.anthropic.Claude.desktop \
   ~/.local/share/icons/hicolor/96x96/apps/claude-desktop.png
 ```
 
-add `~/.config/Claude` to drop your settings and session too.
+Also remove `~/.config/Claude` to delete your settings and session.
 
-## how it works
+## How it works
 
-the windows app is electron. nearly all of it is javascript that already handles linux: the web frontend says "claude for linux", claude code is fetched for `linux-x64`, there's a linux tray icon, freedesktop notifications and xdg activation. the only parts that need porting are a few native binaries.
+The Windows app is built on Electron. Nearly all of it is JavaScript that already handles Linux: the web frontend identifies itself as Claude for Linux, Claude Code is fetched for `linux-x64`, and there is a Linux tray icon, freedesktop notifications and XDG activation. Only a few native binaries need porting.
 
 ```
 downloads.claude.ai RELEASES
-  -> AnthropicClaude-<ver>-full.nupkg        sha1 checked against the feed
-    -> claude.exe                            authenticode: signed by Anthropic, PBC
-      -> INTEGRITY/ELECTRONASAR resource     sha256 of each asar header
-        -> app.asar, ion-dist.asar headers   sha256 of every file + every 4 MiB block
+  -> AnthropicClaude-<ver>-full.nupkg        SHA-1 checked against the feed
+    -> claude.exe                            Authenticode: signed by Anthropic, PBC
+      -> INTEGRITY/ELECTRONASAR resource     SHA-256 of each asar header
+        -> app.asar, ion-dist.asar headers   SHA-256 of every file and every 4 MiB block
           -> 7560 files                      all checked before anything is extracted
 ```
 
-then:
+The build then:
 
-1. windows binaries are dropped: `claude-native-binding.node`, conpty, the m365/github helpers. the verifier lists exactly which ones and the build deletes that list
-2. `@ant/claude-native` is replaced with the rust module from `native/`
-3. node-pty gets its official linux prebuild (tarball sha512 pinned)
-4. `compat/linux-compat.js` is loaded first in the main process and adds no-op versions of windows-only electron apis (`hookWindowMessage`, thumbar, jump lists)
-5. the app is repacked into an asar and dropped next to a copy of nixpkgs electron 45 (the windows build uses 45.3.3)
-6. `install.sh` sets the same electron fuses anthropic ships on windows
+1. Removes the Windows binaries: `claude-native-binding.node`, ConPTY and the Microsoft 365 and GitHub helpers. The verifier lists exactly which files these are, and the build deletes that list
+2. Replaces `@ant/claude-native` with the Rust module in `native/`
+3. Installs the official Linux prebuild of node-pty (tarball SHA-512 pinned)
+4. Loads `compat/linux-compat.js` first in the main process, which adds no-op versions of Windows-only Electron APIs (`hookWindowMessage`, thumbnail toolbars, jump lists)
+5. Repacks the app into an asar next to a copy of nixpkgs Electron 45 (the Windows build uses 45.3.3)
+6. Sets the same Electron fuses Anthropic ships on Windows, in `install.sh`
 
-### native module
+### Native module
 
-`native/` is a napi-rs crate that implements the linux side of `@ant/claude-native`. the important part is safe-fs, which the app uses so claude code and file tools can't be tricked into writing outside a chosen folder.
+`native/` is a napi-rs crate that implements the Linux side of `@ant/claude-native`. The most important part is safe-fs, which the app uses so Claude Code and file tools cannot be tricked into writing outside a chosen folder.
 
-every path is resolved by the kernel with `openat2` and
+Every path is resolved by the kernel with `openat2` and
 
 ```
 RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS
 ```
 
-so `..`, absolute paths, symlinks and `/proc` magic links are refused by the kernel, not by string checks that can race. leaf operations (`mkdirat`, `unlinkat`, `renameat2`, `linkat`, `statx`) run against a parent opened the same way. on top of that:
+so `..`, absolute paths, symlinks and `/proc` magic links are refused by the kernel rather than by string checks that can race. Leaf operations (`mkdirat`, `unlinkat`, `renameat2`, `linkat`, `statx`) run against a parent directory opened the same way. In addition:
 
-- `renameBeneathOntoFreeName` uses `RENAME_NOREPLACE`, so it can't clobber
+- `renameBeneathOntoFreeName` uses `RENAME_NOREPLACE`, so it cannot overwrite an existing file
 - `verifyLeafBeneath` rejects files with extra hard links and files whose name was swapped after opening
-- errors keep the `ENOENT:` / `ELOOP:` / `EXDEV:` prefixes the app maps to its own symlink and escape errors
+- Errors keep the `ENOENT:`, `ELOOP:` and `EXDEV:` prefixes that the app maps to its own symlink and escape errors
 
-everything else in the module (registry, windows elevation, macos auth sheets, office com) is windows or mac only. those calls are stubbed to report "not supported", which is what the app expects on a platform without them. `CLAUDE_NATIVE_TRACE=1 claude-desktop` logs any native call the app makes that the module doesn't have.
+Everything else in the module (registry, Windows elevation, macOS authorization sheets, Office COM) is Windows or macOS only. Those calls are stubbed to report "not supported", which is what the app expects on a platform without them. `CLAUDE_NATIVE_TRACE=1 claude-desktop` logs any native call the app makes that the module does not implement.
 
-### launcher flags
+### Launcher flags
 
-| flag / env | why |
-|---|---|
-| `--ozone-platform-hint=auto` | native wayland when available |
-| `--enable-wayland-ime` | input methods on wayland |
-| `--force-prefers-no-reduced-motion` | gtk often reports "reduced motion" with no settings daemon, which kills every animation |
-| `--enable-smooth-scrolling` | same cause, for scrolling |
-| `FONTCONFIG_FILE` | maps `system-ui`, `sans-serif`, `Segoe UI`, `Arial` etc to inter so fallback text isn't dejavu. only applies to this app |
-| `LD_LIBRARY_PATH` | gcc runtime for node-pty on nix |
+| Flag or variable | Reason |
+| --- | --- |
+| `--ozone-platform-hint=auto` | Native Wayland when available |
+| `--enable-wayland-ime` | Input methods on Wayland |
+| `--force-prefers-no-reduced-motion` | Without a settings daemon, GTK often reports reduced motion, which disables every animation |
+| `--enable-smooth-scrolling` | Same cause, for scrolling |
+| `FONTCONFIG_FILE` | Maps `system-ui`, `sans-serif`, `Segoe UI`, `Arial` and others to Inter so fallback text is not DejaVu. Applies to this app only |
+| `LD_LIBRARY_PATH` | GCC runtime for node-pty on Nix |
 
-## security
+## Security
 
-see [SECURITY.md](SECURITY.md) for reporting.
+See [SECURITY.md](SECURITY.md) to report a vulnerability.
 
-**what the build guarantees**
+### What the build guarantees
 
-- the nupkg matches the sha1 in anthropic's release feed (over https, tls 1.2+)
-- `claude.exe` has a valid authenticode signature that chains to a trusted root, and the signer is exactly `Anthropic, PBC` (delaware 4860621). checked with osslsigncode against your system ca bundle, including the timestamp
-- both asar headers match the hashes embedded in that signed exe, and every file inside matches its header hash, block by block. one flipped byte anywhere stops the build
-- node-pty's tarball matches a pinned sha512, and the rust crate builds with `--locked`
-- nix tools come from a pinned nixpkgs revision (`flake.lock`), not whatever your registry points at
-- the asar and fuse tools are installed from `tools/package-lock.json` with `npm ci --ignore-scripts`, so no install scripts run and every package is hash checked
-- the native module has to pass `test/native.mjs` (24 escape and race tests) before it's packed
-- the feed's version string is checked against a strict pattern before it's used in any path
+- The nupkg matches the SHA-1 in Anthropic's release feed, fetched over HTTPS with TLS 1.2 or later
+- `claude.exe` has a valid Authenticode signature that chains to a trusted root, and the signer is exactly `Anthropic, PBC` (Delaware 4860621). This is checked with osslsigncode against your system CA bundle, including the timestamp
+- Both asar headers match the hashes embedded in the signed executable, and every file inside matches its header hash, block by block. A single changed byte anywhere stops the build
+- The node-pty tarball matches a pinned SHA-512, and the Rust crate builds with `--locked`
+- Nix tools come from a pinned nixpkgs revision (`flake.lock`), not from whatever your registry points to
+- The asar and fuse tools are installed from `tools/package-lock.json` with `npm ci --ignore-scripts`, so no install scripts run and every package is hash checked
+- The native module must pass `test/native.mjs` (24 escape and race tests) before it is packaged
+- The version string from the feed is checked against a strict pattern before it is used in any path
 
-if any check fails, `build.sh` stops and nothing is installed.
+If any check fails, `build.sh` stops and nothing is installed.
 
-**what it changes**
+### What it changes
 
-only the files listed under [how it works](#how-it-works). the web frontend (`ion-dist.asar`) is copied untouched. `patches/apply.mjs` injects one `require` line into the main entry. no network endpoints, telemetry or auth are changed.
+Only the files listed under [How it works](#how-it-works). The web frontend (`ion-dist.asar`) is copied unmodified. `patches/apply.mjs` injects a single `require` line into the main entry point. No network endpoints, telemetry or authentication are changed.
 
-**runtime hardening**
+### Runtime hardening
 
-the installed binary gets the same electron fuses as the official windows build:
+The installed binary has the same Electron fuses as the official Windows build:
 
-| fuse | |
-|---|---|
-| RunAsNode | off, `ELECTRON_RUN_AS_NODE` can't turn the app into a node shell |
-| EnableNodeOptionsEnvironmentVariable | off, `NODE_OPTIONS` is ignored |
-| EnableNodeCliInspectArguments | off, no `--inspect` debugger |
-| OnlyLoadAppFromAsar | on |
-| EnableCookieEncryption | on, cookies are encrypted with your keyring (gnome keyring, kwallet, or chromium's fallback) |
+| Fuse | Setting |
+| --- | --- |
+| RunAsNode | Off. `ELECTRON_RUN_AS_NODE` cannot turn the app into a Node.js shell |
+| EnableNodeOptionsEnvironmentVariable | Off. `NODE_OPTIONS` is ignored |
+| EnableNodeCliInspectArguments | Off. No `--inspect` debugger |
+| OnlyLoadAppFromAsar | On |
+| EnableCookieEncryption | On. Cookies are encrypted with your keyring (GNOME Keyring, KWallet or Chromium's fallback) |
 
-the launcher also clears `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, `ELECTRON_EXTRA_LAUNCH_ARGS` and the electron debug variables before starting, and the install dir is read-only (`r-x`), so nothing running as you can quietly patch the app files without changing permissions first.
+The launcher also clears `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, `ELECTRON_EXTRA_LAUNCH_ARGS` and the Electron debug variables before starting. The install directory is read-only (`r-x`), so nothing running as your user can silently modify the app files without first changing permissions.
 
-the chromium sandbox stays on: renderers and the gpu process run under seccomp-bpf in their own user namespace. electron's asar integrity check only exists for mac and windows, so on linux the app files are protected by normal file permissions under your prefix.
+The Chromium sandbox stays enabled: renderers and the GPU process run under seccomp-bpf in their own user namespace. Electron's asar integrity check exists only on macOS and Windows, so on Linux the app files are protected by normal file permissions under your prefix.
 
-**what it doesn't protect against**
+### What it does not protect against
 
-- a compromised anthropic release. this build trusts anthropic's signature, same as the official app does
-- a compromised nixpkgs, crates.io or npm registry beyond the pinned hashes
-- anything with write access to your install prefix
+- A compromised Anthropic release. This build trusts Anthropic's signature, as the official app does
+- A compromised nixpkgs, crates.io or npm registry, beyond the pinned hashes
+- Anything with write access to your install prefix
 
-## troubleshooting
+## Troubleshooting
 
-**sign in does nothing.** the app opens your default browser. after signing in, the browser opens a `claude://` link. if your browser asks, choose Claude Desktop. check the handler with `xdg-mime query default x-scheme-handler/claude`, it should say `com.anthropic.Claude.desktop`.
+**Sign-in does nothing.** The app opens your default browser. After you sign in, the browser opens a `claude://` link; if it asks, choose Claude Desktop. Check the handler with `xdg-mime query default x-scheme-handler/claude`, which should print `com.anthropic.Claude.desktop`.
 
-**two "Claude" entries in the launcher.** this one is called Claude Desktop. the other is probably a claude code terminal launcher.
+**Two "Claude" entries in the launcher.** This one is named Claude Desktop. The other is probably a Claude Code terminal launcher.
 
-**no animations.** make sure you're starting it through `claude-desktop` and not the raw binary, the flag is in the launcher.
+**No animations.** Start the app with `claude-desktop`, not the raw binary. The required flag is set in the launcher.
 
-**ugly fallback fonts.** install inter (`nixpkgs#inter`, `fonts-inter`), or edit `fontconfig/fonts.conf` and reinstall. to test a family with a dash, escape it: `fc-match 'system\-ui'`.
+**Poor fallback fonts.** Install Inter (`nixpkgs#inter`, `fonts-inter`), or edit `fontconfig/fonts.conf` and reinstall. To test a family name containing a dash, escape it: `fc-match 'system\-ui'`.
 
-**blank window or gpu errors on nvidia.** try `claude-desktop --ozone-platform=x11`, or `--disable-gpu` as a last resort.
+**Blank window or GPU errors on NVIDIA.** Try `claude-desktop --ozone-platform=x11`, or `--disable-gpu` as a last resort.
 
-**logged out after reinstalling.** cookie encryption is on, so if your keyring changed or older cookies can't be read, sign in once more.
+**Signed out after reinstalling.** Cookie encryption is enabled, so if your keyring changed or older cookies cannot be read, sign in again.
 
-**a feature crashes.** run `CLAUDE_NATIVE_TRACE=1 claude-desktop` and open an issue with the `missing:` lines and `~/.config/Claude/logs/main.log`.
+**A feature crashes.** Run `CLAUDE_NATIVE_TRACE=1 claude-desktop` and open an issue with the `missing:` lines and `~/.config/Claude/logs/main.log`.
 
-## development
-
-```
-./build.sh                 full verified build into build/<ver>
-./dev.sh <name> <seconds>  repack the current build, run it on a hidden xvfb display, save .dev/<name>.png and .log
-./run.sh                   run build/current against nix electron without installing
-node test/native.mjs       escape tests for the native module
-nix develop                shell with every build dependency
-```
-
-layout:
+## Development
 
 ```
-build.sh             download, verify, patch, pack
-flake.nix, .lock     pinned nix tools
-tools/               locked asar + fuses cli
-test/native.mjs      native module escape tests
-verify.mjs           asar integrity checker
-install.sh           runtime, fuses, launcher, desktop entry
-native/              rust @ant/claude-native for linux
-shim/claude-native/  js wrapper + stubs for windows/mac-only calls
-compat/              windows-only electron api no-ops
-patches/apply.mjs    injects compat into the main entry
-fontconfig/          app-only font fallbacks
+./build.sh                 Full verified build into build/<ver>
+./dev.sh <name> <seconds>  Repack the current build, run it on a hidden Xvfb display, save .dev/<name>.png and .log
+./run.sh                   Run build/current against Nix Electron without installing
+node test/native.mjs       Escape tests for the native module
+nix develop                Shell with every build dependency
 ```
 
-## legal
+### Repository layout
 
-this is an independent interoperability project, not affiliated with, endorsed by or supported by anthropic. "claude" and "anthropic" are trademarks of anthropic, pbc, used here only to say what this runs.
+| Path | Contents |
+| --- | --- |
+| `build.sh` | Download, verify, patch, package |
+| `flake.nix`, `flake.lock` | Pinned Nix tools |
+| `tools/` | Locked asar and fuses CLI |
+| `test/native.mjs` | Native module escape tests |
+| `verify.mjs` | Asar integrity checker |
+| `install.sh` | Runtime, fuses, launcher, desktop entry |
+| `native/` | Rust `@ant/claude-native` for Linux |
+| `shim/claude-native/` | JavaScript wrapper and stubs for Windows and macOS-only calls |
+| `compat/` | No-ops for Windows-only Electron APIs |
+| `patches/apply.mjs` | Injects the compatibility layer into the main entry point |
+| `fontconfig/` | App-only font fallbacks |
 
-the repo contains no anthropic code, binaries, icons or assets. everything of theirs is downloaded by you, from them, at build time, and stays on your machine. don't upload `dl/`, `x/` or `build/` anywhere.
+## Legal
 
-using the app is still covered by anthropic's [consumer terms](https://www.anthropic.com/legal/consumer-terms) or your organization's agreement with them. you need your own account. if anthropic ships an official linux build, use that.
+This is an independent interoperability project. It is not affiliated with, endorsed by or supported by Anthropic. "Claude" and "Anthropic" are trademarks of Anthropic, PBC, used here only to describe what this software runs.
 
-the code in this repo is mit licensed, see [LICENSE](LICENSE).
+The repository contains no Anthropic code, binaries, icons or assets. Everything of theirs is downloaded by you, from them, at build time, and stays on your machine. Do not upload `dl/`, `x/` or `build/` anywhere.
+
+Use of the app is still governed by Anthropic's [Consumer Terms](https://www.anthropic.com/legal/consumer-terms) or your organization's agreement with them, and you need your own account. If Anthropic releases an official Linux build, use that instead.
+
+The code in this repository is released under the [MIT License](LICENSE).
