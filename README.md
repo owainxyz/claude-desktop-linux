@@ -127,6 +127,7 @@ Everything else in the module (registry, Windows elevation, macOS authorization 
 | `--enable-smooth-scrolling` | Same cause, for scrolling |
 | `FONTCONFIG_FILE` | Maps `system-ui`, `sans-serif`, `Segoe UI`, `Arial` and others to Inter so fallback text is not DejaVu. Applies to this app only |
 | `LD_LIBRARY_PATH` | GCC runtime for node-pty on Nix |
+| `--password-store` | `gnome-libsecret` when a secret service (such as gnome-keyring) is on the session bus, so tokens and cookies are encrypted with your keyring. Otherwise `basic`, which keeps you signed in but only obfuscates them. Chromium cannot detect the keyring by itself on window managers like dwl or sway. |
 
 ## Security
 
@@ -183,7 +184,7 @@ The Chromium sandbox stays enabled: renderers and the GPU process run under secc
 
 **Blank window or GPU errors on NVIDIA.** Try `claude-desktop --ozone-platform=x11`, or `--disable-gpu` as a last resort.
 
-**Signed out after reinstalling.** Cookie encryption is enabled, so if your keyring changed or older cookies cannot be read, sign in again.
+**Signed out on every restart, or `safeStorage not available` in the log.** Check `busctl --user list | grep secrets`. If nothing is listed, start gnome-keyring (or another secret service) and relaunch; otherwise the app falls back to basic storage. After switching between the two, sign in again.
 
 **A feature crashes.** Run `CLAUDE_NATIVE_TRACE=1 claude-desktop` and open an issue with the `missing:` lines and `~/.config/Claude/logs/main.log`.
 
