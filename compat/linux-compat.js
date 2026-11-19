@@ -20,3 +20,4 @@ for (const [k, v] of Object.entries(winOnly)) {
 }
 if (typeof app.setUserTasks !== "function") app.setUserTasks = () => false;
 if (typeof app.setJumpList !== "function") app.setJumpList = () => "ok";
+if (typeof app.getJumpListSettings !== "function") app.getJumpListSettings = () => ({ minItems: 0, removedItems: [] });

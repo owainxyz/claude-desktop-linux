@@ -45,6 +45,7 @@ const native = {
   enumRegistrySubkeys: () => [],
   enumRegistryValues: () => [],
   registryKeyReadError: () => undefined,
+  writeRegistryValue: () => false,
   closeStartingDialog: () => {},
   getWindowsElevationType: () => undefined,
   readFreshUserPath,
