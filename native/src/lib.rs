@@ -204,7 +204,8 @@ pub async fn open_beneath(dir_fd: i32, segs: Vec<String>, flags: i32, mode: u32)
         check(&segs)?;
         let fl = OFlags::from_bits_retain(flags as u32) | OFlags::NOFOLLOW | OFlags::CLOEXEC;
         let p = if segs.is_empty() { ".".to_string() } else { segs.join("/") };
-        openat2(borrow(dir_fd)?, p.as_str(), fl, Mode::from_bits_truncate(mode), RESOLVE)
+        let md = if fl.intersects(OFlags::CREATE | OFlags::TMPFILE) { Mode::from_bits_truncate(mode) } else { Mode::empty() };
+        openat2(borrow(dir_fd)?, p.as_str(), fl, md, RESOLVE)
             .map(|f| f.into_raw_fd())
             .map_err(|e| os(e, &p))
     })

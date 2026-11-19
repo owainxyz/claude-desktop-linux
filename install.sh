@@ -8,6 +8,7 @@ umask 022
 [ -d "$src/resources" ] || { echo "error: run ./build.sh first" >&2; exit 1; }
 [[ $dest = /* && $dest != / && $dest =~ ^[A-Za-z0-9/._-]+$ ]] || { echo "error: PREFIX must be an absolute path without spaces: $dest" >&2; exit 1; }
 lib=$dest/lib/claude-desktop
+if pgrep -f "^$lib/claude-desktop" >/dev/null; then echo "error: close Claude Desktop first" >&2; exit 1; fi
 el=$(nix build --no-link --print-out-paths "$here#electron")
 real=$(sed -n 's/^exec "\(.*\)\/electron" .*/\1/p' "$el/bin/electron" | tail -1)
 stdcpp=$(nix build --no-link --print-out-paths "$here#gcclib" | tail -1)

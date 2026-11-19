@@ -51,6 +51,9 @@ await allows("open inside", async () => {
   if (fs.readFileSync(fd, "utf8") !== "inside") throw new Error("wrong content");
   fs.closeSync(fd);
 });
+await allows("read with a mode set", async () => {
+  fs.closeSync(await n.openBeneath(r, ["a", "f"], ro, 0o600));
+});
 await refuses("leaf symlink", () => n.openBeneath(r, ["a", "leaflink"], ro, 0), ["ELOOP"]);
 await refuses("dir symlink", () => n.openBeneath(r, ["dirlink", "secret"], ro, 0), ["ELOOP"]);
 await refuses("magic link", () => n.openBeneath(r, ["magic", "etc", "passwd"], ro, 0), ["ELOOP"]);
