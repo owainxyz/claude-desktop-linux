@@ -39,6 +39,8 @@ unset ELECTRON_RUN_AS_NODE NODE_OPTIONS ELECTRON_ENABLE_LOGGING ELECTRON_DEBUG_N
 export LD_LIBRARY_PATH=$stdcpp/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}
 export CHROME_DEVEL_SANDBOX=$el/libexec/electron/chrome-sandbox
 export ELECTRON_IS_DEV=0
+# terminal panel falls back to powershell.exe when SHELL is unset (desktop launch)
+export CLAUDE_DESKTOP_TERMINAL_SHELL="\${CLAUDE_DESKTOP_TERMINAL_SHELL:-\${SHELL:-\$(getent passwd "\$(id -un)" | cut -d: -f7)}}"
 export FONTCONFIG_FILE=$lib/fonts.conf
 store=--password-store=basic
 export CLAUDE_PLAINTEXT_STORE=1

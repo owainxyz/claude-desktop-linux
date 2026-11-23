@@ -14,4 +14,5 @@ done
 stdcpp=$(nix build --no-link --print-out-paths 'nixpkgs#stdenv.cc.cc.lib' 2>/dev/null | tail -1)
 export LD_LIBRARY_PATH=$stdcpp/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export ELECTRON_IS_DEV=0
+export CLAUDE_DESKTOP_TERMINAL_SHELL="${CLAUDE_DESKTOP_TERMINAL_SHELL:-${SHELL:-$(getent passwd "$(id -un)" | cut -d: -f7)}}"
 exec "$dir/claude-desktop" --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations "$@"
